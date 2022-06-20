@@ -97,11 +97,18 @@
                 config.allowBroken = true;
                 pkgs = import nixpkgs { inherit config system; overlays = [ overlay ]; };
 
-                grace = pkgs.haskell.packages."${compiler}".grace;
+                haskellPackages = pkgs.haskell.packages."${compiler}";
+                inherit (haskellPackages) grace;
                 graceNoTests = grace.overrideAttrs (_: { doCheck = false; });
                 website = pkgs.website;
+
+                devShell = haskellPackages.shellFor {
+                  packages = ps: [ ps.grace ];
+                  buildInputs = with haskellPackages; [ cabal-install haskell-language-server ];
+                  withHoogle = true;
+                };
              in
-            { inherit grace graceNoTests website; };
+            { inherit grace graceNoTests website devShell; };
 
           withDefaultCompiler = withCompiler "ghc8107";
           withghcjs = withCompiler "ghcjs";
@@ -122,8 +129,8 @@
         defaultApp = apps.default;
 
         devShells = {
-          default = withDefaultCompiler.grace.env;
-          ghcjs = withghcjs.grace.env;
+          default = withDefaultCompiler.devShell;
+          ghcjs = withghcjs.devShell;
         };
 
         devShell = devShells.default;
